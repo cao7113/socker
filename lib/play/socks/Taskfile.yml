@@ -1,0 +1,22 @@
+# https://taskfile.dev/usage/
+version: '3'
+vars:
+  PORT: 1088
+tasks:
+  default: mix test --no-start
+  sh: iex --erl "-kernel shell_history enabled" -S mix run --no-start
+  run: iex --erl "-kernel shell_history enabled" -S mix
+  server: mix run --no-halt
+  prel: MIXE_ENV=prod mix release --overwrite
+
+  # local
+  t:  curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5 localhost:1088 http://localhost:4000/api/ping
+  th:  curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5-hostname localhost:1088 http://localhost:4000/api/ping
+
+  # http
+  t-http: curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5 localhost:1088 http://hello-api-elixir.fly.dev/api/ping
+  th-https: curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5-hostname localhost:1088 http://hello-api-elixir.fly.dev/api/ping
+
+  # https
+  t-https: curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5 localhost:1088 https://hello-api-elixir.fly.dev/api/ping
+  th-https: curl -4 -Lv --connect-timeout 3 --max-time 5 --socks5-hostname localhost:1088 https://hello-api-elixir.fly.dev/api/ping

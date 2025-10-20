@@ -1,0 +1,13 @@
+# Kland Attached Note
+
+## Intro
+
+Kland stands for ThousandIsland
+
+Attached by
+
+```elixir
+p = Kland.start!
+
+p
+```

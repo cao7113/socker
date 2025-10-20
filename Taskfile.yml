@@ -1,0 +1,65 @@
+# https://taskfile.dev/usage/
+version: '3'
+vars:
+  PORT: 1234
+  
+tasks:
+  default: mix test
+  sh: iex --erl "-kernel shell_history enabled" -S mix
+  run: iex --erl "-kernel shell_history enabled" -S mix run --no-halt
+  ob: iex --erl "-kernel shell_history enabled" -S mix run --no-halt -e ":observer.start()"
+  # {:ok, l} = :gen_tcp.listen(4000, [backlog: 333]); :inet.getopts(l, [:backlog])
+
+  ## Livebook attached note
+  lb: 
+    desc: local livebook note with ipv6
+    env:
+      ERL_AFLAGS: "-proto_dist inet6_tcp -kernel shell_history enabled"
+    cmds:
+    - iex --name kland --cookie kland -S mix
+
+  # tcp client test
+  # nc localhost 4000
+  # nc -l 4000
+  # nc -z localhost 4000-6000
+
+  # tcp debug
+  # tcpdump -i lo0 -n -s 0 -A port 4000
+  # sudo tcpdump -i lo0 tcp and port 4000 -n -v
+
+  # echo "hi\n time\n q" | nc localhost 4000
+  # echo "hi\n time\n q" | curl telnet://localhost:4000
+  nc-test: 
+    cmds:
+      - |
+        echo -n "hi
+          time
+          q
+          " | nc localhost {{.PORT}}
+  
+  tel: curl telnet://localhost:{{.PORT}}
+  tel2:
+    cmds:
+      - |
+        echo "hi
+          time
+          q" | curl telnet://localhost:{{.PORT}}
+
+
+  ## tcp SYNC
+  # sudo nping --tcp -p 4000 --flags SYN 127.0.0.1
+  # sudo nping --icmp -c 2  google.com
+
+  setup: |
+    mkdir -p _local
+    kland_path=_local/thousand_island
+    if [ -d $kland_path ]; then
+      echo "# Using $kland_path"
+    else
+      echo "# Not found $kland_path, setup it first like below: "
+      echo "git clone --depth 1 git@github.com:mtrudel/thousand_island.git _local/thounsand_island"
+      exit 1
+    fi
+
+    mix deps.get
+    MIX_ENV=test mix deps.get 
