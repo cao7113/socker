@@ -14,11 +14,14 @@ defmodule Tcp do
   iex> s = Tcp.connect! 1234
     >> Tcp.send! s, "hi"
     >> flush
+
+
+  只有服务端 listen，客户端connect时就进行了TCP 三次握手并建立了连接；可从WireShark上验证！
   """
 
   require Logger
 
-  @default_listen_port 1234
+  @default_listen_port 2345
   @listen_opts [
     # fix {:error, :eaddrinuse}
     reuseport: true,
@@ -28,7 +31,7 @@ defmodule Tcp do
 
   ## Client
 
-  def connect!(port, opts \\ []) do
+  def connect!(port \\ @default_listen_port, opts \\ [active: false]) do
     # iex(4)> String.to_charlist "localhost"
     # ~c"localhost"
     :gen_tcp.connect(:localhost, port, opts) |> elem(1)
@@ -39,17 +42,33 @@ defmodule Tcp do
     :ok = :gen_tcp.send(socket, data)
   end
 
+  def recv!(socket, len \\ 0) do
+    {:ok, data} = :gen_tcp.recv(socket, len)
+    data
+  end
+
   ## Server
 
+  @doc """
+  Listen and accept connections
+  """
   def listen!(opts \\ @listen_opts) do
     {listener_pid, %{listen_socket: lsock, port: lport}} = get_listener!(opts)
-    conn_sup = get_conn_sup(lport)
-    conn_manager = get_conn_manager(lport)
 
     Task.start_link(fn ->
-      loop_accept(lsock, lport, conn_sup, conn_manager)
+      conn_sup = get_conn_sup(lport)
+      conn_manager = get_conn_manager(lport)
+      do_loop_accept(lsock, lport, conn_sup, conn_manager)
     end)
 
+    listener_pid
+  end
+
+  @doc """
+  Listen connect without accepting; but can listen again with listen!() thanks to registered_name
+  """
+  def listen_only!(opts \\ @listen_opts) do
+    {listener_pid, _state} = get_listener!(opts)
     listener_pid
   end
 
@@ -71,35 +90,35 @@ defmodule Tcp do
     reg_name = listener_name(port)
     found_pid = Process.whereis(reg_name)
 
-    {agent_pid, kind} =
+    {listener_pid, kind} =
       if not is_nil(found_pid) do
         {found_pid, :already_existed}
       else
-        agent_opts = if port == 0, do: [], else: [name: reg_name]
+        {:ok, listener_pid} =
+          Agent.start_link(fn ->
+            {:ok, lsock} = :gen_tcp.listen(port, opts)
+            {:ok, {_ip, port}} = :inet.sockname(lsock)
 
-        {:ok, agent_pid} =
-          Agent.start_link(
-            fn ->
-              {:ok, lsock} = :gen_tcp.listen(port, opts)
+            %{
+              port: port,
+              listen_socket: lsock,
+              options: opts,
+              registered_name: reg_name
+            }
+          end)
 
-              %{
-                port: port,
-                listen_socket: lsock,
-                options: opts,
-                registered_name: reg_name
-              }
-            end,
-            agent_opts
-          )
-
-        # todo register dynamic name on port == 0
-
-        {agent_pid, :new_created}
+        {listener_pid, :new_created}
       end
 
-    %{port: port, options: opts} = state = Agent.get(agent_pid, & &1)
+    %{port: port, options: opts} = state = Agent.get(listener_pid, & &1)
+
+    if kind == :new_created do
+      reg_name = listener_name(port)
+      Process.register(listener_pid, reg_name)
+    end
+
     Logger.info("Listing port #{port} [#{kind}] with opts: #{inspect(opts)}")
-    {agent_pid, state}
+    {listener_pid, state}
   end
 
   def listener_name(0), do: nil
@@ -149,11 +168,11 @@ defmodule Tcp do
     end
   end
 
-  def loop_accept(lsock, lport, conn_sup, conn_manager) do
+  def do_loop_accept(lsock, lport, conn_sup, conn_manager) do
     {:ok, sock} = :gen_tcp.accept(lsock)
     {:ok, {_ip, _port} = peer} = :inet.peername(sock)
     peer_info = peer |> Net.addr_with_port()
-    conn_num = Counter.next(:tcp_conn)
+    conn_num = Counter.next(:tcp_conn_counter)
 
     {:ok, conn_pid} =
       Task.Supervisor.start_child(conn_sup, fn ->
@@ -169,7 +188,7 @@ defmodule Tcp do
       "Accepted connection##{conn_num} from #{peer_info} handling with #{conn_pid |> inspect}"
     )
 
-    loop_accept(lsock, lport, conn_sup, conn_manager)
+    do_loop_accept(lsock, lport, conn_sup, conn_manager)
   end
 
   defp do_recv(sock, conn_num, conn_manager, info, cnt \\ 0) do

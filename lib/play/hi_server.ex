@@ -1,4 +1,9 @@
 defmodule HiServer do
+  @moduledoc """
+  Hi GenServer
+  https://hexdocs.pm/elixir/GenServer.html#content
+  """
+
   use GenServer
 
   ## User API
@@ -12,7 +17,7 @@ defmodule HiServer do
     pid
   end
 
-  ## Callbacks
+  ## GenServer Callbacks
 
   @impl true
   def init(init_arg) do
@@ -22,5 +27,10 @@ defmodule HiServer do
   @impl true
   def handle_call(:ping, _from, state) do
     {:reply, :pong, state}
+  end
+
+  @impl true
+  def handle_cast(:push, state) do
+    {:noreply, state}
   end
 end

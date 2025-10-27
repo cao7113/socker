@@ -21,3 +21,6 @@ socker-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+thousand_island
+keys/

@@ -1,13 +1,76 @@
-# Kland Attached Note
-
-## Intro
-
-Kland stands for ThousandIsland
-
-Attached by
+# Socker Attached Note
 
 ```elixir
-p = Kland.start!
+import Kino.Shorts
+```
 
-p
+## Attached
+
+### On socker
+
+```
+task lb
+```
+
+### On livebook note
+
+Attached by livebook runtime with `socker@mac.local` node-name and `socker` cookie
+
+## Socker App
+
+```elixir
+DateTime.utc_now()
+```
+
+```elixir
+# show process like :observer.start()
+Kino.Process.render_app_tree(:socker)
+```
+
+```elixir
+sup = Socker.app_sup()
+Kino.Process.render_sup_tree(sup)
+
+# or direct export p because kino support supervisor tree rendering by default
+# sup
+```
+
+## Apps
+
+```elixir
+Application.started_applications |> Enum.sort
+```
+
+## Telemetry & Logger
+
+```elixir
+Kino.Process.render_app_tree(:telemetry)
+```
+
+```elixir
+Kino.Process.render_app_tree(:logger)
+```
+
+## Kino
+
+```elixir
+Kino.Process.render_app_tree(:kino)
+```
+
+```elixir
+Kino.Process.render_seq_trace(fn -> 
+  conn = Tcp.connect!(Socker.default_port())
+  Tcp.send!(conn, "hi")
+  Tcp.recv!(conn)
+end)
+```
+
+## SSL
+
+```elixir
+Kino.Process.render_app_tree(:ssl)
+```
+
+```elixir
+# Kino.Process.render_app_tree(:public_key)
 ```

@@ -1,6 +1,6 @@
 # Socker
 
-Play net sockets
+Playground for network sockets.
 
 ## Links
 

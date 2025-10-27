@@ -61,7 +61,7 @@ defmodule Net do
   # :inet.parse_address ~c"127.0.0.1"
   # {192, 168, 42, 2} => "192.168.42.2"
   def addr_to_string(addr) when is_tuple(addr), do: :inet.ntoa(addr) |> to_string()
-  # {{127, 0, 0, 1}, 4000}
+
   def addr_with_port({addr, port}) when is_tuple(addr) and is_integer(port),
     do: "#{addr_to_string(addr)}:#{port}"
 

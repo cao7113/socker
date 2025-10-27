@@ -1,10 +1,28 @@
 defmodule AppHelper do
-  def loaded_apps(), do: Application.loaded_applications() |> Enum.sort()
-  def apps(), do: Application.started_applications() |> Enum.sort()
+  @moduledoc """
+  Application helpers
+  """
 
-  def app_env(app) do
-    Application.get_all_env(app)
+  def current_app, do: Application.get_application(__MODULE__)
+
+  def apps(kind \\ :started) do
+    case kind do
+      :started ->
+        Application.started_applications()
+
+      :loaded ->
+        Application.loaded_applications()
+
+      _ ->
+        nil
+    end
+    |> Enum.sort()
   end
 
-  # todo dep tree
+  def app_env(app \\ current_app()), do: Application.get_all_env(app)
+
+  def started?(app) when is_atom(app) do
+    Application.started_applications()
+    |> Enum.any?(fn {a, _desc, _ver} -> a == app end)
+  end
 end

@@ -1,8 +1,10 @@
-defmodule Socker.Handler.Echo do
+defmodule Socker.EchoHandler do
   @moduledoc """
   A sample Handler implementation of the Echo protocol
 
   https://en.wikipedia.org/wiki/Echo_Protocol
+
+
   """
 
   use ThousandIsland.Handler
@@ -14,13 +16,39 @@ defmodule Socker.Handler.Echo do
   # import ThousandIsland.Socket, only: [send: 2]
   alias ThousandIsland.Socket
 
+  def send_msg(conn, msg), do: send(conn, msg)
+
+  def get_socket(conn), do: GenServer.call(conn, :get_socket)
+
+  def raw_socket(conn) do
+    %ThousandIsland.Socket{socket: socket} = get_socket(conn)
+    socket
+  end
+
+  def close_socket(conn) do
+    socket = get_socket(conn)
+    ThousandIsland.Socket.close(socket)
+  end
+
+  ## ThousandIsland.Handler callbacks
+
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
-    # socket.socket |> Net.socket_info() |> dbg
-    # socket.socket |> Net.socket_opts() |> dbg
+    # Socket.sockname(socket) |> dbg
+    {:ok, {_ip, _port} = peer} = Socket.peername(socket)
+
+    # todo: use Registry!
+    # conn_name = :"conn-#{port}"
+    conn_num = Counter.next(:app_conn_counter)
+    conn_name = :"conn#{conn_num}"
+
+    Logger.info("handle_connection [#{conn_name}] from peer: #{peer |> inspect}")
+    # send :conn0, "hi" # to send peer handled by handle_info system msg!
+    Process.register(self(), conn_name)
+
     Socket.send(
       socket,
-      "#{DateTime.utc_now()}: Connected with state: #{state |> inspect} pid: #{self() |> inspect} #{socket |> inspect}\n"
+      "#{DateTime.utc_now()}: Connected #{conn_name} with state: #{state |> inspect} pid: #{self() |> inspect}\n"
     )
 
     {:continue, state}
@@ -69,6 +97,10 @@ defmodule Socker.Handler.Echo do
   ## GenServer callbacks
 
   @impl GenServer
+  def handle_call(:get_socket, _from, {socket, state}) do
+    {:reply, socket, {socket, state}, socket.read_timeout}
+  end
+
   def handle_call(msg, _from, {socket, state}) do
     # Do whatever you'd like with msg & from
     Socket.send(socket, "call with msg: #{msg}\n")
@@ -85,8 +117,8 @@ defmodule Socker.Handler.Echo do
   @impl GenServer
   def handle_info(msg, {socket, state}) do
     # Do whatever you'd like with msg
-    Logger.info("handle_info with msg: #{msg}")
-    Socket.send(socket, "msg: #{msg} from handle_info callback\n")
+    Logger.info("handle_info with msg: #{msg |> inspect}")
+    Socket.send(socket, "msg: #{msg |> inspect} from handle_info callback\n")
     {:noreply, {socket, state}, socket.read_timeout}
   end
 end

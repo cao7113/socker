@@ -1,67 +1,58 @@
 defmodule Kland do
   @moduledoc """
-  Play thounsand-island
+  Shortcuts for thousand_island utilts
   """
-
-  @port 4000
-  @server_name ThousandIsland.Server
-
-  @default_opts [
-    port: @port,
-    # handler_module: HTTPHelloWorld,
-    handler_module: Socker.Handler.Echo,
-    handler_options: [],
-    supervisor_options: [name: @server_name],
-    # require: num_listen_sockets <= num_acceptors
-    num_listen_sockets: 2,
-    # default 100,
-    num_acceptors: 4,
-    # transport_options: [reuseport: true, debug: true],
-    transport_options: [reuseport: true],
-    # https://hexdocs.pm/elixir/1.18.4/GenServer.html#t:debug/0
-    # [:trace | :log | :statistics | {:log_to_file, Path.t()}]
-    # to underlying handler GenServer.start_link(__MODULE__, handler_options, genserver_options)
-    genserver_options: [debug: [:log]]
-  ]
 
   require Logger
 
+  def server, do: Process.whereis(Socker.kland_server_name())
+  def listener(sup \\ server()), do: ThousandIsland.Server.listener_pid(sup)
+
+  def acceptor_pool(sup \\ server()),
+    do: ThousandIsland.Server.acceptor_pool_supervisor_pid(sup)
+
+  def pool(sup \\ server()), do: acceptor_pool(sup)
+
+  def acceptor_supervisors(sup \\ acceptor_pool()),
+    do: ThousandIsland.AcceptorPoolSupervisor.acceptor_supervisor_pids(sup)
+
+  def conn_supervisors(sup \\ acceptor_pool()) do
+    acceptor_supervisors(sup)
+    |> Enum.reduce([], fn asup, acc ->
+      conn_sup = ThousandIsland.AcceptorSupervisor.connection_sup_pid(asup)
+      [conn_sup | acc]
+    end)
+  end
+
+  def get_connections(sups \\ conn_supervisors()) do
+    sups
+    |> Enum.reduce([], fn sup, acc ->
+      childs = DynamicSupervisor.which_children(sup)
+      childs ++ acc
+    end)
+  end
+
+  def connection_pids(conns \\ get_connections()) do
+    conns |> Enum.map(fn {:undefined, pid, :worker, _} -> pid end)
+  end
+
   @doc """
+  Send message by
+  > send <conn_pid>, "hi"
+  > Reg.find_name K.rand_conn
   """
-  def start!(opts \\ [log: :trace]) do
-    opts = Keyword.merge(@default_opts, opts)
+  def rand_conn(conn_pids \\ connection_pids()),
+    do: if(length(conn_pids) == 0, do: nil, else: Enum.random(conn_pids))
 
-    {log, opts} = Keyword.pop(opts, :log)
-
-    if log do
-      enable_logging(log)
-    end
-
-    {:ok, sup_pid} = ThousandIsland.start_link(opts)
-
-    Logger.info("Server started on port http://localhost:#{opts[:port]}")
-    sup_pid
+  def info do
+    %{
+      server: server(),
+      listener: listener(),
+      acceptor_pool: acceptor_pool(),
+      acceptor_supervisors: acceptor_supervisors(),
+      conn_supervisors: conn_supervisors()
+    }
   end
-
-  def restart!(opts \\ [], pid \\ get_server()) do
-    ThousandIsland.stop(pid)
-    start!(opts)
-  end
-
-  def listener_pid(pid \\ get_server()) do
-    ThousandIsland.Server.listener_pid(pid)
-  end
-
-  def acceptor_pool_pid(pid \\ get_server()) do
-    ThousandIsland.Server.acceptor_pool_supervisor_pid(pid)
-  end
-
-  def acceptor_pids(pid \\ acceptor_pool_pid()) do
-    pid
-    |> ThousandIsland.AcceptorPoolSupervisor.acceptor_supervisor_pids()
-  end
-
-  def get_server, do: Process.whereis(@server_name)
 
   ## logging
 

@@ -5,54 +5,67 @@ vars:
   
 tasks:
   default: mix test
-  sh: iex --erl "-kernel shell_history enabled" -S mix
-  run: iex --erl "-kernel shell_history enabled" -S mix run --no-halt
-  ob: iex --erl "-kernel shell_history enabled" -S mix run --no-halt -e ":observer.start()"
-  # {:ok, l} = :gen_tcp.listen(4000, [backlog: 333]); :inet.getopts(l, [:backlog])
-
-  ## Livebook attached note
+  sh: iex --erl "-kernel shell_history enabled" -S mix run --no-start
+  run: iex --erl "-kernel shell_history enabled" -S mix run # --no-halt
   lb: 
     desc: local livebook note with ipv6
     env:
       ERL_AFLAGS: "-proto_dist inet6_tcp -kernel shell_history enabled"
     cmds:
-    - iex --name kland --cookie kland -S mix
+    - iex --name socker --cookie socker -S mix run # -e ":observer.start()"
+  ob: iex --erl "-kernel shell_history enabled" -S mix run -e ":observer.start()"
 
-  # tcp client test
-  # nc localhost 4000
-  # nc -l 4000
-  # nc -z localhost 4000-6000
-
-  # tcp debug
-  # tcpdump -i lo0 -n -s 0 -A port 4000
-  # sudo tcpdump -i lo0 tcp and port 4000 -n -v
-
-  # echo "hi\n time\n q" | nc localhost 4000
-  # echo "hi\n time\n q" | curl telnet://localhost:4000
-  nc-test: 
-    cmds:
-      - |
-        echo -n "hi
-          time
-          q
-          " | nc localhost {{.PORT}}
-  
+  ## tcp client test
+  # nc localhost 1234
+  # # nc -l 1234
+  # nc -z localhost 1234-2000
+  # sudo tcpdump -i lo0 tcp and port 1234 -n -v
+  # echo "hi" | curl telnet://localhost:1234
   tel: curl telnet://localhost:{{.PORT}}
-  tel2:
-    cmds:
-      - |
-        echo "hi
-          time
-          q" | curl telnet://localhost:{{.PORT}}
 
+  ## curl without verify certification
+  # curl -k https://127.0.0.1:1234
+  ## ncat (from nmap) support ssl connection
+  # ncat 
+  # certificate validation is off by default. You need to use --ssl-verify if you do want to validate the certificate.
+  sc: ncat --ssl 127.0.0.1 1234
+  scv: ncat --ssl --ssl-verify 127.0.0.1 1234
+
+  ## 使用Wireshark解密跟踪tls流量
+  ## SSLKEYLOGFILE使用绝对路径！！！
+  ## curl
+  # https://everything.curl.dev/usingcurl/tls/sslkeylogfile.html#restrictions
+  # NOTE: should use homebrew curl not mac built-in curl as above note
+  # sslcurl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /opt/homebrew/opt/curl/bin/curl -k https://127.0.0.1:1234
+  bcurl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /opt/homebrew/opt/curl/bin/curl --cacert ~/dev/elab/socker/keys/test/root_ca.crt https://localhost:1234
+  # homebrew curl 不一定使用macOs的系统证书, 但mac自带的curl会 
+  curl: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && /usr/bin/curl https://127.0.0.1:1234
+  # 如果通过 Homebrew 安装了新版 curl，它可能默认使用自己的证书存储（而非系统证书） /opt/homebrew/etc/openssl@3/certs 
+  # brew info openssl
+  # ==> Caveats
+  #   To add additional certificates, place .pem files in
+  #     /opt/homebrew/etc/openssl@3/certs
+  #   and run
+  #     /opt/homebrew/opt/openssl@3/bin/c_rehash
+
+  ## Linux/macOS：终端执行, 再启动浏览器。 应该在iTerm2中执行而不是 task xxx???
+  # ls -d1 /Applications/Google*.app
+  sslchrome: export SSLKEYLOGFILE=~/dev/elab/socker/tmp/tlskey.log && open -a "Google Chrome"
+  # or /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome
+  # open https://127.0.0.1:1234
+  # ip.addr == 66.241.125.252 and tcp
+  # ip.src == 66.241.125.252
+  # tcp.port == 443 and (ip.src == 66.241.125.152 or ip.dst == 66.241.125.152)
+  # curl https://httpbin.org/ip
 
   ## tcp SYNC
-  # sudo nping --tcp -p 4000 --flags SYN 127.0.0.1
+  # sudo nping --tcp -p 1234 --flags SYN 127.0.0.1
   # sudo nping --icmp -c 2  google.com
 
+  ## Setup
   setup: |
     mkdir -p _local
-    kland_path=_local/thousand_island
+    kland_path=thousand_island
     if [ -d $kland_path ]; then
       echo "# Using $kland_path"
     else
