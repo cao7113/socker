@@ -23,7 +23,9 @@ defmodule Socker do
     # https://hexdocs.pm/elixir/1.18.4/GenServer.html#t:debug/0
     # [:trace | :log | :statistics | {:log_to_file, Path.t()}]
     # to underlying handler GenServer.start_link(__MODULE__, handler_options, genserver_options)
-    genserver_options: [debug: [:log]]
+    genserver_options: [
+      # debug: [:log]
+    ]
   ]
 
   def app_sup, do: Process.whereis(Socker.Supervisor)

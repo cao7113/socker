@@ -31,6 +31,8 @@ tasks:
   sc: ncat --ssl 127.0.0.1 1234
   scv: ncat --ssl --ssl-verify 127.0.0.1 1234
 
+  # chrome://net-export/
+
   ## 使用Wireshark解密跟踪tls流量
   ## SSLKEYLOGFILE使用绝对路径！！！
   ## curl

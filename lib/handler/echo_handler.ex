@@ -114,11 +114,11 @@ defmodule Socker.EchoHandler do
     {:noreply, {socket, state}, socket.read_timeout}
   end
 
-  @impl GenServer
-  def handle_info(msg, {socket, state}) do
-    # Do whatever you'd like with msg
-    Logger.info("handle_info with msg: #{msg |> inspect}")
-    Socket.send(socket, "msg: #{msg |> inspect} from handle_info callback\n")
-    {:noreply, {socket, state}, socket.read_timeout}
-  end
+  # @impl GenServer
+  # def handle_info(msg, {socket, state}) do
+  #   # Do whatever you'd like with msg
+  #   Logger.info("handle_info with msg: #{msg |> inspect}")
+  #   Socket.send(socket, "msg: #{msg |> inspect} from handle_info callback\n")
+  #   {:noreply, {socket, state}, socket.read_timeout}
+  # end
 end
